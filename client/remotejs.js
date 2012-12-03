@@ -12,6 +12,7 @@ var RemoteJS;
 			server_port: "",
 			redirect_console: false,
 			use_browser_console: false,
+			enable_legacy_ajax: true,
 			onconnect: function(){},
 			onclose: function(){}
     	};
@@ -23,11 +24,12 @@ var RemoteJS;
     	}    	
 
     	this.use_fallback = false;
+    	if(window.console && window.console.log && window.console.info) this.console_support = true;
 
     	if(ctx.options["redirect_console"]){
     		try {
     			//Keep the old console to use if necessary
-    			if(window.console && window.console.log){
+    			if(ctx.console_support){
 		    		ctx.consoleHolder = window.console;
 		    	}
 
@@ -39,8 +41,10 @@ var RemoteJS;
 	    					ctx.buffer.push({type:"log", value: arguments})
 	    				}
 
-	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
-	    					ctx.consoleHolder.log.apply(ctx.consoleHolder,arguments);
+	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					try{
+		    					ctx.consoleHolder.log.apply(ctx.consoleHolder,arguments);
+	    					} catch(e){}
 	    				}
 	    			},
 	    			info: function(){
@@ -50,8 +54,10 @@ var RemoteJS;
 	    					ctx.buffer.push({type:"info", value: arguments})
 	    				}
 
-	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
-	    					ctx.consoleHolder.info.apply(ctx.consoleHolder,arguments);
+	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					try{
+		    					ctx.consoleHolder.info.apply(ctx.consoleHolder,arguments);
+	    					} catch(e){}
 	    				}
 	    			},
 	    			error: function(){
@@ -61,8 +67,10 @@ var RemoteJS;
 	    					ctx.buffer.push({type:"error", value: arguments})
 	    				}
 
-	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
-	    					ctx.consoleHolder.error.apply(ctx.consoleHolder,arguments);
+	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					try{
+		    					ctx.consoleHolder.error.apply(ctx.consoleHolder,arguments);
+	    					} catch(e){}
 	    				}
 	    			},
 	    			warn: function(){
@@ -72,18 +80,22 @@ var RemoteJS;
 	    					ctx.buffer.push({type:"warn", value: arguments})
 	    				}
 
-	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
-	    					ctx.consoleHolder.warn.apply(ctx.consoleHolder,arguments);
+	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					try{
+		    					ctx.consoleHolder.warn.apply(ctx.consoleHolder,arguments);
+	    					} catch(e){}
 	    				}
 	    			}
 	    		};
 
 	    		//If console is not supported we hold our fake console anyway,
 	    		//so internal messages will not hang
-    			if(!(window.console && window.console.log)){
+    			if(!ctx.console_support){
 		    		ctx.consoleHolder = window.console;
 		    	}
-    		} catch(e){}
+    		} catch(e){
+    			alert("ERRO");
+    		}
     	}
 
     	try{
@@ -122,17 +134,20 @@ var RemoteJS;
 
     		//Interval to fallback on ajax
     		setInterval(function(){
-    			send_buffer_ajax();
+    			ctx.send_buffer_ajax();
     		},1000);
     	}
 
     };
 
     RemoteJS.prototype.send_buffer_ajax = function(){
-    	//TODO: Send the buffer as ajax to legacy browsers.
-    	//      For now we are just cleanning the buffer
+    	if(this.options["enable_legacy_ajax"]){
+	    	//TODO: Send the buffer as ajax to legacy browsers.
+	    	//      For now we are just cleanning the buffer
+    	}
+    	//Cleanup message buffer
     	this.buffer = new Array();
-    }
+    };
 
     RemoteJS.prototype.proccess_buffer = function(){
     	for(var i=0 ; i < this.buffer.length; i++){
