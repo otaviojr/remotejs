@@ -11,24 +11,36 @@ var RemoteJS;
 			server_url: "",
 			server_port: "",
 			redirect_console: false,
-			onconnect: function(){}
+			use_browser_console: false,
+			onconnect: function(){},
+			onclose: function(){}
     	};
 
     	for(i in cfg){
         	if(this.options[i] != undefined){
             	this.options[i] = cfg[i];
         	}
-    	}
+    	}    	
+
+    	this.use_fallback = false;
 
     	if(ctx.options["redirect_console"]){
     		try {
-	    		ctx.consoleHolder = window.console;
+    			//Keep the old console to use if necessary
+    			if(window.console && window.console.log){
+		    		ctx.consoleHolder = window.console;
+		    	}
+
 	    		window.console = {
 	    			log: function(){
 	    				if(ctx.socket.readyState == 1){
 		    				ctx.log.apply(ctx,arguments);
 	    				} else {
 	    					ctx.buffer.push({type:"log", value: arguments})
+	    				}
+
+	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					ctx.consoleHolder.log.apply(ctx.consoleHolder,arguments);
 	    				}
 	    			},
 	    			info: function(){
@@ -37,6 +49,10 @@ var RemoteJS;
 	    				} else {
 	    					ctx.buffer.push({type:"info", value: arguments})
 	    				}
+
+	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					ctx.consoleHolder.info.apply(ctx.consoleHolder,arguments);
+	    				}
 	    			},
 	    			error: function(){
 	    				if(ctx.socket.readyState == 1){
@@ -44,22 +60,36 @@ var RemoteJS;
 	    				} else {
 	    					ctx.buffer.push({type:"error", value: arguments})
 	    				}
+
+	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					ctx.consoleHolder.error.apply(ctx.consoleHolder,arguments);
+	    				}
 	    			},
 	    			warn: function(){
-	    				if(ctx.socket.readyState == 1){	    				
+	    				if(ctx.socket.readyState == 1){
 	    					ctx.warn.apply(ctx,arguments);
 	    				} else {
 	    					ctx.buffer.push({type:"warn", value: arguments})
 	    				}
+
+	    				if(ctx.options["use_browser_console"]==true && window.console !== ctx.consoleHolder && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
+	    					ctx.consoleHolder.warn.apply(ctx.consoleHolder,arguments);
+	    				}
 	    			}
 	    		};
+
+	    		//If console is not supported we hold our fake console anyway,
+	    		//so internal messages will not hang
+    			if(!(window.console && window.console.log)){
+		    		ctx.consoleHolder = window.console;
+		    	}
     		} catch(e){}
     	}
 
     	try{
 	    	this.socket = new WebSocket("ws://"+this.options["server_url"]+":"+this.options["server_port"],'log-protocol');
 	    	this.socket.onopen = function(){
-	    		ctx.consoleHolder.info("Conexão com remoteJS estabelecida.");
+	    		ctx.consoleHolder.info("remoteJS connection success.");
 		    	if(ctx.options["onconnect"]){
 		    		ctx.options["onconnect"].call(ctx);
 		    	}
@@ -67,7 +97,7 @@ var RemoteJS;
 	    	};
 
 	    	this.socket.onerror = function(){
-	    		ctx.consoleHolder.info("Erro ao conectar com remoteJS.");
+	    		ctx.consoleHolder.info("Error connecting on remoteJS.");
 	    		window.console = ctx.consoleHolder;
 	    		ctx.proccess_buffer();
 	    	}
@@ -77,17 +107,32 @@ var RemoteJS;
 	    	};
 
 	    	this.socket.onclose = function(){
-	    		ctx.consoleHolder.info("Conexão com remoteJS fechada.");
+	    		ctx.consoleHolder.info("RemoteJS connection closed.");
 	    		window.console = ctx.consoleHolder;
 	    		ctx.proccess_buffer();
+		    	if(ctx.options["onclose"]){
+		    		ctx.options["onclose"].call(ctx);
+		    	}
 	    	};    		
     	} catch(e){
-    		window.console = ctx.consoleHolder;
-    		ctx.proccess_buffer();
+    		//Fake readyState, so our fake console will keep using buffer
+    		//to log
     		this.socket = {readyState: 0};
+    		this.use_fallback = true;
+
+    		//Interval to fallback on ajax
+    		setInterval(function(){
+    			send_buffer_ajax();
+    		},1000);
     	}
 
     };
+
+    RemoteJS.prototype.send_buffer_ajax = function(){
+    	//TODO: Send the buffer as ajax to legacy browsers.
+    	//      For now we are just cleanning the buffer
+    	this.buffer = new Array();
+    }
 
     RemoteJS.prototype.proccess_buffer = function(){
     	for(var i=0 ; i < this.buffer.length; i++){
