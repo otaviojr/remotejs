@@ -12,7 +12,8 @@ exports.options = {
 		},
 		"logfile":{
 			enabled: true,
-			filename: "/sites/remotejs/logs/remotejs.log"
+			filename: "/sites/remotejs/logs/remotejs.log",
+			field_separator: "\t"
 		}
 		}
 };

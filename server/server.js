@@ -42,6 +42,8 @@ function originIsAllowed(origin) {
   return true;
 }
 
+var listeners = [];
+
 wsServer.on('request', function(request) {
     if (!originIsAllowed(request.origin)) {
       request.reject();
@@ -50,6 +52,7 @@ wsServer.on('request', function(request) {
     }
 
     console.log((new Date()) + ' Connection accepted.');
+    
 	if(request.requestedProtocols == 'log-protocol'){
 		var connection = request.accept('log-protocol', request.origin);
 		
@@ -68,14 +71,36 @@ wsServer.on('request', function(request) {
 					var backend = backends[i];
 					backend.backend.log(obj);
 				}
+				
+				for(var j = 0; j < listeners.length; j++){
+					listeners[j].sendUTF(JSON.stringify(obj));
+				}
 			}
 			else if (message.type === 'binary') {
-				console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
+				//Do not support binary content by now
 			}
 		});
 		connection.on('close', function(reasonCode, description) {
 			console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
 		});
 	} else if(request.requestedProtocols == 'log-listener-protocol'){
+		var connection = request.accept('log-listener-protocol', request.origin);
+		listeners.push(connection);
+		connection.on('message', function(message) {
+			if (message.type === 'utf8') {
+				//Listeners only receive messages... do not talk for now..
+			}
+		});
+		
+		connection.on('close', function(reasonCode, description) {
+			for(var i = 0; i < listeners.length; i++){
+				if(listeners[i] === connection){
+					listeners.splice(i,1);
+					console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' encontrado e removido.');
+					break;
+				}				
+			}
+			console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' disconnected.');
+		});
 	}
 });

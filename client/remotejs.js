@@ -8,6 +8,7 @@ var RemoteJS;
 		this.buffer = new Array();
 
 		this.options = {
+			app_id: "app_id",
 			server_url: "",
 			server_port: "",
 			redirect_console: false,
@@ -139,6 +140,28 @@ var RemoteJS;
     		},1000);
     	}
 
+    	var fn = function(message,url,line){
+    		var final_message = message;
+    		if(typeof message === 'object'){
+    			final_message = {
+    				message: message.message,
+    				lineno: message.lineno,
+    				filename: message.filename,    				
+    			};
+    		}
+    		window.console.error(final_message);
+    		return false;
+    	};
+
+    	if(window.addEventListener){
+	    	window.addEventListener("error",function(message,url,line){
+	    		return fn(message,url,line);
+	    	}, true);
+    	} else {
+	    	window.attachEvent("onerror",function(message,url,line){
+	    		return fn(message,url,line);
+	    	});
+    	}
     };
 
     RemoteJS.prototype.send_buffer_ajax = function(){
@@ -183,16 +206,25 @@ var RemoteJS;
     RemoteJS.prototype.send_log = function(type,msg){
     	var ctx = this;
     	if(this.socket.readyState == 1){
+    		if(typeof msg !== 'object'){
+    			msg = {message:msg};
+    		}
 	    	var obj = {
+	    		app_id: this.options["app_id"],
 	    		type: type,
-	    		message: msg,
+	    		error: msg,
 	    		referer: document.location,
 	    		userAgent: navigator.userAgent
 	    	};
+
 	    	var fn = function(){
 	    		ctx.socket.send(JSON.stringify(obj));
 	    	}
-	    	if(type == "error" && ctx.options["screenshot_on_error"] && html2canvas){
+
+	    	//Check wherever the current browser support canvas and base64 images.
+	    	var elem = document.createElement('canvas');
+	    	var canvas_support = (elem.getContext && elem.getContext('2d') && elem.toDataURL);
+	    	if(type == "error" && ctx.options["screenshot_on_error"] && html2canvas && canvas_support){
 				html2canvas( [ document.body ], {
 				    onrendered: function( canvas ) {
 				    	obj["screenshot"] = canvas.toDataURL();

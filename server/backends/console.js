@@ -8,13 +8,14 @@ exports.init = function(config){
 };
 
 exports.log = function(obj){
+	var final_message = obj.error.message;	
 	if(obj.type == "error"){
-		console.error(obj.remoteAddress + ": " + obj.message)
+		console.error(obj.remoteAddress + ": " + final_message);
 	} else if(obj.type == "warn"){
-		console.warn(obj.remoteAddress + ": " + obj.message)
+		console.warn(obj.remoteAddress + ": " + final_message);
 	} else if(obj.type == "info"){
-		console.info(obj.remoteAddress + ": " + obj.message)
+		console.info(obj.remoteAddress + ": " + final_message);
 	} else if(obj.type == "log"){
-		console.log(obj.remoteAddress + ": " + obj.message)
+		console.log(obj.remoteAddress + ": " + final_message);
 	}
 }

@@ -24,7 +24,6 @@ exports.log = function(obj){
 	} else {
 		type="UNKNOWN";
 	}
-	
-	var msg = obj.date.toJSON() + "-"+type+"-" + obj.remoteAddress + "-" + obj.userAgent + "-" + obj.referer.href + "-" + obj.message;
+	var msg = obj.app_id + options.field_separator + obj.date.toJSON() + options.field_separator + type+ options.field_separator + obj.remoteAddress + options.field_separator + obj.userAgent + options.field_separator + obj.referer.href + options.field_separator + obj.error.message+ options.field_separator +(obj.error.filename?obj.error.filename:"")+options.field_separator+(obj.error.lineno?obj.error.lineno:0);
 	file.write(msg+"\r\n");
 }

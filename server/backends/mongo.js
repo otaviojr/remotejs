@@ -13,10 +13,11 @@ exports.init = function(config){
 		db = mongoose.createConnection('mongodb://'+options.host+'/'+options.database);
 
 		messageSchema = new mongoose.Schema({
+			app_id: String,
 			type: String,
 			origin: String,
 			remoteAddress: String,
-			message: String,
+			error: Object,
 			referer: Object,
 			date: Date,
 			userAgent: String,
@@ -33,6 +34,5 @@ exports.log = function(obj){
 		if(err){
 			console.log("MongoDB: Error when saving message");
 		}
-		console.log(message);
 	});
 }
