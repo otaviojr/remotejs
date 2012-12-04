@@ -208,10 +208,6 @@ var RemoteJS;
     	if(this.socket.readyState == 1){
     		if(typeof msg !== 'object'){
     			msg = {message:msg};
-    		} else {
-    			if(typeof msg.nodeType !== 'undefined'){
-    				msg = "[object Object]";
-    			}
     		}
 
 	    	var obj = {
@@ -223,7 +219,11 @@ var RemoteJS;
 	    	};
 
 	    	var fn = function(){
-	    		ctx.socket.send(JSON.stringify(obj));
+	    		//Protect from circular objects
+	    		try{
+	    			ctx.socket.send(JSON.stringify(obj));
+	    		} catch(e){
+	    		}
 	    	}
 
 	    	//Check wherever the current browser support canvas and base64 images.
