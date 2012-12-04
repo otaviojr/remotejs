@@ -24,6 +24,12 @@ exports.log = function(obj){
 	} else {
 		type="UNKNOWN";
 	}
-	var msg = obj.app_id + options.field_separator + obj.date.toJSON() + options.field_separator + type+ options.field_separator + obj.remoteAddress + options.field_separator + obj.userAgent + options.field_separator + obj.referer.href + options.field_separator + obj.error.message+ options.field_separator +(obj.error.filename?obj.error.filename:"")+options.field_separator+(obj.error.lineno?obj.error.lineno:0);
+	var message = "";
+	if(!obj.error.message){
+		message = JSON.stringify(obj.error);
+	} else {
+		message = obj.error.message;
+	}
+	var msg = obj.app_id + options.field_separator + obj.date.toJSON() + options.field_separator + type+ options.field_separator + obj.remoteAddress + options.field_separator + obj.userAgent + options.field_separator + obj.referer.href + options.field_separator + message + options.field_separator +(obj.error.filename?obj.error.filename:"")+options.field_separator+(obj.error.lineno?obj.error.lineno:0);
 	file.write(msg+"\r\n");
 }

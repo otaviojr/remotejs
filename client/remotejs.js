@@ -208,7 +208,12 @@ var RemoteJS;
     	if(this.socket.readyState == 1){
     		if(typeof msg !== 'object'){
     			msg = {message:msg};
+    		} else {
+    			if(typeof msg.nodeType !== 'undefined'){
+    				msg = "[object Object]";
+    			}
     		}
+
 	    	var obj = {
 	    		app_id: this.options["app_id"],
 	    		type: type,
@@ -224,7 +229,7 @@ var RemoteJS;
 	    	//Check wherever the current browser support canvas and base64 images.
 	    	var elem = document.createElement('canvas');
 	    	var canvas_support = (elem.getContext && elem.getContext('2d') && elem.toDataURL);
-	    	if(type == "error" && ctx.options["screenshot_on_error"] && html2canvas && canvas_support){
+	    	if(type == "error" && ctx.options["screenshot_on_error"] && typeof html2canvas === 'function' && canvas_support){
 				html2canvas( [ document.body ], {
 				    onrendered: function( canvas ) {
 				    	obj["screenshot"] = canvas.toDataURL();

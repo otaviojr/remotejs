@@ -1,5 +1,5 @@
 exports.options = {
-	listen: '198.58.104.21',
+	listen: '#IP TO LISTEN#',
 	port: 80,
 	backend: {
 		"console":{
@@ -12,7 +12,7 @@ exports.options = {
 		},
 		"logfile":{
 			enabled: true,
-			filename: "/sites/remotejs/logs/remotejs.log",
+			filename: "/path_to/remotejs.log",
 			field_separator: "\t"
 		}
 		}

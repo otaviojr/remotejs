@@ -64,7 +64,7 @@ wsServer.on('request', function(request) {
 				obj["remoteAddress"] = connection.remoteAddress;
 				
 				var now = new Date(); 
-				var now_utc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),  now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());        	
+				var now_utc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),  now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
 				obj["date"] = now_utc;
 				
 				for(var i = 0; i < backends.length; i++){
