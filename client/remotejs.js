@@ -13,6 +13,7 @@ var RemoteJS;
 			redirect_console: false,
 			use_browser_console: false,
 			enable_legacy_ajax: true,
+			screenshot_on_error: true,		//Depends on html2canvas to work properly (https://github.com/niklasvh/html2canvas)
 			onconnect: function(){},
 			onclose: function(){}
     	};
@@ -180,13 +181,27 @@ var RemoteJS;
     };
 
     RemoteJS.prototype.send_log = function(type,msg){
+    	var ctx = this;
     	if(this.socket.readyState == 1){
 	    	var obj = {
 	    		type: type,
 	    		message: msg,
-	    		referer: document.location
+	    		referer: document.location,
+	    		userAgent: navigator.userAgent
 	    	};
-	    	this.socket.send(JSON.stringify(obj));
+	    	var fn = function(){
+	    		ctx.socket.send(JSON.stringify(obj));
+	    	}
+	    	if(type == "error" && ctx.options["screenshot_on_error"] && html2canvas){
+				html2canvas( [ document.body ], {
+				    onrendered: function( canvas ) {
+				    	obj["screenshot"] = canvas.toDataURL();
+				    	fn();
+				    }
+				});
+	    	} else {
+	    		fn();
+	    	}
     	}
     };
 }).call(this);
