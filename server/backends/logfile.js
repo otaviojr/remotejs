@@ -25,6 +25,6 @@ exports.log = function(obj){
 		type="UNKNOWN";
 	}
 	
-	var msg = obj.date.toJSON() + "-"+type+"-" + obj.remoteAddress + "-" + obj.referer.href + "-" + obj.message;
+	var msg = obj.date.toJSON() + "-"+type+"-" + obj.remoteAddress + "-" + obj.userAgent + "-" + obj.referer.href + "-" + obj.message;
 	file.write(msg+"\r\n");
 }

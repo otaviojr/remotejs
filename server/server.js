@@ -33,7 +33,9 @@ server.listen(config.options.port, config.options.listen, function() {
 
 var wsServer = new WebSocketServer({
     httpServer: server,
-    autoAcceptConnections: false
+    autoAcceptConnections: false,
+    maxReceivedFrameSize: 1073741824,
+    maxReceivedMessageSize: 1099511627776
 });
 
 function originIsAllowed(origin) {

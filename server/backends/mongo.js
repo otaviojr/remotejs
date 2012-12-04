@@ -18,7 +18,9 @@ exports.init = function(config){
 			remoteAddress: String,
 			message: String,
 			referer: Object,
-			date: Date
+			date: Date,
+			userAgent: String,
+			screenshot: String
 		});
 		
 		Message = db.model('Message', messageSchema);
@@ -31,5 +33,6 @@ exports.log = function(obj){
 		if(err){
 			console.log("MongoDB: Error when saving message");
 		}
+		console.log(message);
 	});
 }
