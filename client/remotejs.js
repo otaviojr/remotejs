@@ -25,7 +25,9 @@ var RemoteJS;
         	}
     	}    	
 
+    	this.disabled = false;
     	this.use_fallback = false;
+    	this.fallback_errors = 0;
     	if(window.console && window.console.log && window.console.info) this.console_support = true;
 
     	if(ctx.options["redirect_console"]){
@@ -37,12 +39,13 @@ var RemoteJS;
 
 	    		window.console = {
 	    			log: function(){
-	    				if(ctx.socket.readyState == 1){
-		    				ctx.log.apply(ctx,arguments);
-	    				} else {
-	    					ctx.buffer.push({type:"log", value: arguments})
+	    				if(!ctx.disabled){
+		    				if(ctx.socket.readyState == 1 || ctx.use_fallback == true){
+			    				ctx.log.apply(ctx,arguments);
+		    				} else {
+		    					ctx.buffer.push({type:"log", value: arguments})
+		    				}
 	    				}
-
 	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
 	    					try{
 		    					ctx.consoleHolder.log.apply(ctx.consoleHolder,arguments);
@@ -50,12 +53,13 @@ var RemoteJS;
 	    				}
 	    			},
 	    			info: function(){
-	    				if(ctx.socket.readyState == 1){
-		    				ctx.info.apply(ctx,arguments);
-	    				} else {
-	    					ctx.buffer.push({type:"info", value: arguments})
-	    				}
-
+	    				if(!ctx.disabled){
+		    				if(ctx.socket.readyState == 1 || ctx.use_fallback == true){
+			    				ctx.info.apply(ctx,arguments);
+		    				} else {
+		    					ctx.buffer.push({type:"info", value: arguments})
+		    				}
+		    			}
 	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
 	    					try{
 		    					ctx.consoleHolder.info.apply(ctx.consoleHolder,arguments);
@@ -63,12 +67,13 @@ var RemoteJS;
 	    				}
 	    			},
 	    			error: function(){
-	    				if(ctx.socket.readyState == 1){
-		    				ctx.error.apply(ctx,arguments);
-	    				} else {
-	    					ctx.buffer.push({type:"error", value: arguments})
-	    				}
-
+	    				if(!ctx.disabled){
+		    				if(ctx.socket.readyState == 1 || ctx.use_fallback == true){
+			    				ctx.error.apply(ctx,arguments);
+		    				} else {
+		    					ctx.buffer.push({type:"error", value: arguments})
+		    				}
+		    			}
 	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
 	    					try{
 		    					ctx.consoleHolder.error.apply(ctx.consoleHolder,arguments);
@@ -76,12 +81,13 @@ var RemoteJS;
 	    				}
 	    			},
 	    			warn: function(){
-	    				if(ctx.socket.readyState == 1){
-	    					ctx.warn.apply(ctx,arguments);
-	    				} else {
-	    					ctx.buffer.push({type:"warn", value: arguments})
-	    				}
-
+	    				if(!ctx.disabled){
+		    				if(ctx.socket.readyState == 1 || ctx.use_fallback == true){
+		    					ctx.warn.apply(ctx,arguments);
+		    				} else {
+		    					ctx.buffer.push({type:"warn", value: arguments})
+		    				}
+		    			}
 	    				if(ctx.options["use_browser_console"]==true && ctx.console_support && ( (ctx.socket && ctx.socket.readyState == 1) || ctx.use_fallback == true)) {
 	    					try{
 		    					ctx.consoleHolder.warn.apply(ctx.consoleHolder,arguments);
@@ -112,7 +118,7 @@ var RemoteJS;
 
 	    	this.socket.onerror = function(){
 	    		ctx.consoleHolder.info("Error connecting on remoteJS.");
-	    		window.console = ctx.consoleHolder;
+	    		ctx.use_fallback = true;
 	    		ctx.proccess_buffer();
 	    	}
 
@@ -122,7 +128,7 @@ var RemoteJS;
 
 	    	this.socket.onclose = function(){
 	    		ctx.consoleHolder.info("RemoteJS connection closed.");
-	    		window.console = ctx.consoleHolder;
+	    		ctx.use_fallback = true;
 	    		ctx.proccess_buffer();
 		    	if(ctx.options["onclose"]){
 		    		ctx.options["onclose"].call(ctx);
@@ -133,11 +139,7 @@ var RemoteJS;
     		//to log
     		this.socket = {readyState: 0};
     		this.use_fallback = true;
-
-    		//Interval to fallback on ajax
-    		setInterval(function(){
-    			ctx.send_buffer_ajax();
-    		},1000);
+	    	this.proccess_buffer();
     	}
 
     	var fn = function(message,url,line){
@@ -164,13 +166,41 @@ var RemoteJS;
     	}
     };
 
-    RemoteJS.prototype.send_buffer_ajax = function(){
-    	if(this.options["enable_legacy_ajax"]){
-	    	//TODO: Send the buffer as ajax to legacy browsers.
-	    	//      For now we are just cleanning the buffer
+    RemoteJS.prototype.send_ajax = function(obj,callback){
+		var dados = JSON.stringify(obj);
+    	if(window.XDomainRequest){
+			var req = new XDomainRequest();
+			req.open("POST","http://"+this.options["server_url"]+":"+this.options["server_port"]+"/onerror");
+			req.send(dados);
+			req.onload = function(ev){
+				if(callback){
+					callback.call(req,true);
+				}
+			}
+			req.onerror = function(ev){
+				if(callback){
+					callback.call(req,false);
+				}
+			}
+    	} else if(window.XMLHttpRequest){
+			var req = new XMLHttpRequest();
+			req.open("POST","http://"+this.options["server_url"]+":"+this.options["server_port"]+"/onerror",true);  
+			req.setRequestHeader('Content-Type', 'application/json');
+			req.onreadystatechange = function(ev){
+				var ret = false;
+				if(req.status == 200) 
+					ret = true;
+
+				if(callback){
+					callback.call(req,ret,ev);
+				}
+			};
+			req.send(dados);    		
+    	} else {
+			if(callback){
+				callback.call(req,false);
+			}    		
     	}
-    	//Cleanup message buffer
-    	this.buffer = new Array();
     };
 
     RemoteJS.prototype.proccess_buffer = function(){
@@ -205,7 +235,7 @@ var RemoteJS;
 
     RemoteJS.prototype.send_log = function(type,msg){
     	var ctx = this;
-    	if(this.socket.readyState == 1){
+    	if(this.socket.readyState == 1 || this.use_fallback == true){
     		if(typeof msg !== 'object'){
     			msg = {message:msg};
     		}
@@ -214,17 +244,42 @@ var RemoteJS;
 	    		app_id: this.options["app_id"],
 	    		type: type,
 	    		error: msg,
-	    		referer: document.location,
+	    		referer: {
+	    			host: document.location.host,
+	    			hostname: document.location.hostname,
+	    			href: document.location.href,
+	    			pathname: document.location.pathname,
+	    			port: document.location.port,
+	    			protocol: document.location.protocol,
+	    			search: document.location.search,
+	    			hash: document.location.hash
+	    		},
 	    		userAgent: navigator.userAgent
 	    	};
 
 	    	var fn = function(){
 	    		//Protect from circular objects
 	    		try{
-	    			ctx.socket.send(JSON.stringify(obj));
+	    			if(!ctx.use_fallback){
+		    			ctx.socket.send(JSON.stringify(obj));
+	    			} else {
+	    				if(ctx.options["enable_legacy_ajax"]){
+		    				ctx.send_ajax(obj,function(success,ev){
+		    					if(!success){
+		    						ctx.fallback_errors++;
+		    						if(ctx.fallback_errors > 3){
+		    							ctx.disabled = true;
+		    						}
+			    					ctx.consoleHolder.info("Error using legacy fallback to send error.");
+		    					}
+		    				});
+		    			} else {
+							ctx.consoleHolder.info("Legacy fallback system disabled.");
+		    			}
+	    			}
 	    		} catch(e){
 	    		}
-	    	}
+	    	};
 
 	    	//Check wherever the current browser support canvas and base64 images.
 	    	var elem = document.createElement('canvas');
