@@ -15,6 +15,7 @@ var RemoteJS;
 			use_browser_console: false,
 			enable_legacy_ajax: true,
 			screenshot_on_error: true,		//Depends on html2canvas to work properly (https://github.com/niklasvh/html2canvas)
+			use_ssl: false,
 			onconnect: function(){},
 			onclose: function(){}
     	};
@@ -107,7 +108,7 @@ var RemoteJS;
     	}
 
     	try{
-	    	this.socket = new WebSocket("ws://"+this.options["server_url"]+":"+this.options["server_port"],'log-protocol');
+	    	this.socket = new WebSocket((this.options["use_ssl"]?"wss://":"ws://")+this.options["server_url"]+":"+this.options["server_port"],'log-protocol');
 	    	this.socket.onopen = function(){
 	    		ctx.consoleHolder.info("remoteJS connection success.");
 		    	if(ctx.options["onconnect"]){
@@ -170,7 +171,7 @@ var RemoteJS;
 		var dados = JSON.stringify(obj);
     	if(window.XDomainRequest){
 			var req = new XDomainRequest();
-			req.open("POST","http://"+this.options["server_url"]+":"+this.options["server_port"]+"/onerror");
+			req.open("POST",(this.options["use_ssl"]?"https://":"http://")+this.options["server_url"]+":"+this.options["server_port"]+"/onerror");
 			req.send(dados);
 			req.onload = function(ev){
 				if(callback){
@@ -184,7 +185,7 @@ var RemoteJS;
 			}
     	} else if(window.XMLHttpRequest){
 			var req = new XMLHttpRequest();
-			req.open("POST","http://"+this.options["server_url"]+":"+this.options["server_port"]+"/onerror",true);  
+			req.open("POST",(this.options["use_ssl"]?"https://":"http://")+this.options["server_url"]+":"+this.options["server_port"]+"/onerror",true);  
 			req.setRequestHeader('Content-Type', 'application/json');
 			req.onreadystatechange = function(ev){
 				var ret = false;
