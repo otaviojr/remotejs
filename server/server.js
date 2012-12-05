@@ -2,14 +2,25 @@
 //pid = daemon.start('./logs/stdout.log', './logs/stderr.log');
 //daemon.lock('./tmp/remotejs.pid');
 
+var crypto = require('crypto');
 var WebSocketServer = require('websocket').server;
 var http = require('http');
+var https = require('https');
 var fs = require("fs");
 var path = require("path");
 var url = require("url");
 
 // Read the configuration file
 var config = require("./config.js");
+
+var ssl_options = null;
+if(config.options.ssl_info.ssl_enabled){
+
+	ssl_options = {
+	  key: fs.readFileSync(config.options.ssl_info.private_key).toString(),
+	  cert: fs.readFileSync(config.options.ssl_info.certificate).toString()
+	};
+}
 
 // Require all enabled backends on the config file
 var backends = new Array();
@@ -49,10 +60,19 @@ var proccess_error = function(content,origin,remoteAddress) {
 	}
 }
 
-var server = http.createServer(function(request, response) {
-    console.log((new Date()) + ' Received request for ' + request.url);
-    
-	var uri = url.parse(request.url).pathname, filename = path.join(process.cwd(), uri);
+function originIsAllowed(origin) {
+  return true;
+}
+
+var servers = [];
+var wsservers = [];
+
+var http_handle = function(request, response) {
+	console.log((new Date()) + ' Received request for ' + request.url);
+	
+	var uri = url.parse(request.url).pathname, filename = path.join(config.options.static_files, uri);
+	
+	console.log("Filename="+filename);
 	
 	console.log("Asking for: "+ url.parse(request.url).pathname);
 
@@ -72,14 +92,14 @@ var server = http.createServer(function(request, response) {
 			return;			
 		} else if(request.method == "POST"){
 			request.setEncoding('utf-8');
-		  	var responseString = '';
+			var responseString = '';
 
-  			request.on('data', function(data) {
-    			responseString += data;
-  			});
+			request.on('data', function(data) {
+				responseString += data;
+			});
 
-  			request.on('end', function() {
-  				proccess_error(responseString,request.origin,request.connection.remoteAddress);
+			request.on('end', function() {
+				proccess_error(responseString,request.origin,request.connection.remoteAddress);
 				var headers = {
 					"Access-Control-Allow-Origin": 	"*",
 					"Access-Control-Allow-Methods":	"POST,OPTIONS",
@@ -88,8 +108,8 @@ var server = http.createServer(function(request, response) {
 				response.writeHead(200, headers);
 				response.write("{'ret':1}");
 				response.end();
-  			});
-  		}
+			});
+		}
 	} else {
 		path.exists(filename, function(exists) {
 			if(!exists) {
@@ -115,65 +135,76 @@ var server = http.createServer(function(request, response) {
 			});
 		});
 	}
-});
-      
-server.listen(config.options.port, config.options.listen, function() {
-    console.log((new Date()) + " Server is listening on port "+config.options.listen+":"+config.options.port);
-});
-
-var wsServer = new WebSocketServer({
-    httpServer: server,
-    autoAcceptConnections: false,
-    maxReceivedFrameSize: 1073741824,
-    maxReceivedMessageSize: 1099511627776
-});
-
-function originIsAllowed(origin) {
-  return true;
 }
 
-wsServer.on('request', function(request) {
-    if (!originIsAllowed(request.origin)) {
-      request.reject();
-      console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
-      return;
-    }
-
-    console.log((new Date()) + ' Connection accepted.');
-    
-	if(request.requestedProtocols == 'log-protocol'){
-		var connection = request.accept('log-protocol', request.origin);
-		
-		connection.on('message', function(message) {
-			if (message.type === 'utf8') {
-				var message = message.utf8Data;
-				proccess_error(message,request.origin,connection.remoteAddress);
-			}
-			else if (message.type === 'binary') {
-				//Do not support binary content by now
-			}
-		});
-		connection.on('close', function(reasonCode, description) {
-			console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
-		});
-	} else if(request.requestedProtocols == 'log-listener-protocol'){
-		var connection = request.accept('log-listener-protocol', request.origin);
-		listeners.push(connection);
-		connection.on('message', function(message) {
-			if (message.type === 'utf8') {
-				//Listeners only receive messages... do not talk for now..
-			}
-		});
-		
-		connection.on('close', function(reasonCode, description) {
-			for(var i = 0; i < listeners.length; i++){
-				if(listeners[i] === connection){
-					listeners.splice(i,1);
-					console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' encontrado e removido.');
-					break;
-				}				
-			}
-			console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' disconnected.');
-		});
+for(var i = 0; i < config.options.ports.length; i++){
+	var port = config.options.ports[i];
+	
+	var server = null;
+	if(config.options.ssl_info.ssl_enabled && port.ssl && ssl_options != null){
+		server = https.createServer(ssl_options,http_handle);
+	} else {
+		server = http.createServer(http_handle);
 	}
-});
+	
+	server.my_port = port.port;
+	server.my_url = config.options.listen;
+	server.listen(port.port, config.options.listen, function() {
+		console.log((new Date()) + " Server is listening on port "+this.my_url+":"+this.my_port);
+	});
+	
+	var wsServer = new WebSocketServer({
+		httpServer: server,
+		autoAcceptConnections: false,
+		maxReceivedFrameSize: 1073741824,
+		maxReceivedMessageSize: 1099511627776
+	});
+	
+	wsServer.on('request', function(request) {
+		if (!originIsAllowed(request.origin)) {
+		  request.reject();
+		  console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
+		  return;
+		}
+	
+		console.log((new Date()) + ' Connection accepted.');
+		
+		if(request.requestedProtocols == 'log-protocol'){
+			var connection = request.accept('log-protocol', request.origin);
+			
+			connection.on('message', function(message) {
+				if (message.type === 'utf8') {
+					var message = message.utf8Data;
+					proccess_error(message,request.origin,connection.remoteAddress);
+				}
+				else if (message.type === 'binary') {
+					//Do not support binary content by now
+				}
+			});
+			connection.on('close', function(reasonCode, description) {
+				console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+			});
+		} else if(request.requestedProtocols == 'log-listener-protocol'){
+			var connection = request.accept('log-listener-protocol', request.origin);
+			listeners.push(connection);
+			connection.on('message', function(message) {
+				if (message.type === 'utf8') {
+					//Listeners only receive messages... do not talk for now..
+				}
+			});
+			
+			connection.on('close', function(reasonCode, description) {
+				for(var i = 0; i < listeners.length; i++){
+					if(listeners[i] === connection){
+						listeners.splice(i,1);
+						console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' encontrado e removido.');
+						break;
+					}				
+				}
+				console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' disconnected.');
+			});
+		}
+	});	
+	servers.push(server);
+	wsservers.push(wsServer);
+}
