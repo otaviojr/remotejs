@@ -83,13 +83,13 @@ var http_handle = function(request, response) {
 				"Access-Control-Allow-Origin": 	"*", 
 				"Access-Control-Allow-Methods":	"POST,OPTIONS",
 				"Content-Type":					"application/json",
-				"Access-Control-Allow-Headers": "X-Requested-With, Access-Control-Allow-Origin, X-HTTP-Method-Override, Content-Type, Authorization, Accept",
+				"Access-Control-Allow-Headers": "X-Requested-With, Access-Control-Allow-Origin, X-HTTP-Method-Override, Content-Type, Authorization, Accept, x-forwarded-for",
 				"Access-Control-Max-Age": 		"86400"
 			};
 			response.writeHead(200, headers);
 			response.end();
 			console.log("OPTIONS - returned");
-			return;			
+			return;
 		} else if(request.method == "POST"){
 			request.setEncoding('utf-8');
 			var responseString = '';
@@ -99,7 +99,8 @@ var http_handle = function(request, response) {
 			});
 
 			request.on('end', function() {
-				proccess_error(responseString,request.origin,request.connection.remoteAddress);
+				var remoteAddress = request.remoteAddress;
+				proccess_error(responseString,request.origin,remoteAddress);
 				var headers = {
 					"Access-Control-Allow-Origin": 	"*",
 					"Access-Control-Allow-Methods":	"POST,OPTIONS",
@@ -168,6 +169,7 @@ for(var i = 0; i < config.options.ports.length; i++){
 		}
 	
 		console.log((new Date()) + ' Connection accepted.');
+		var remoteAddress = request.remoteAddress;
 		
 		if(request.requestedProtocols == 'log-protocol'){
 			var connection = request.accept('log-protocol', request.origin);
@@ -175,14 +177,14 @@ for(var i = 0; i < config.options.ports.length; i++){
 			connection.on('message', function(message) {
 				if (message.type === 'utf8') {
 					var message = message.utf8Data;
-					proccess_error(message,request.origin,connection.remoteAddress);
+					proccess_error(message,request.origin,remoteAddress);
 				}
 				else if (message.type === 'binary') {
 					//Do not support binary content by now
 				}
 			});
 			connection.on('close', function(reasonCode, description) {
-				console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+				console.log((new Date()) + ' Peer ' + remoteAddress + ' disconnected.');
 			});
 		} else if(request.requestedProtocols == 'log-listener-protocol'){
 			var connection = request.accept('log-listener-protocol', request.origin);
@@ -197,11 +199,11 @@ for(var i = 0; i < config.options.ports.length; i++){
 				for(var i = 0; i < listeners.length; i++){
 					if(listeners[i] === connection){
 						listeners.splice(i,1);
-						console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' encontrado e removido.');
+						console.log((new Date()) + ' Listener ' + remoteAddress + ' encontrado e removido.');
 						break;
 					}				
 				}
-				console.log((new Date()) + ' Listener ' + connection.remoteAddress + ' disconnected.');
+				console.log((new Date()) + ' Listener ' + remoteAddress + ' disconnected.');
 			});
 		}
 	});	

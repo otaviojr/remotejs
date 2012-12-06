@@ -1,11 +1,11 @@
 exports.options = {
-	listen: '198.58.104.21',
-	ports: [{port:80,ssl:false},{port:443,ssl:true}],
-	static_files: "/sites/remotejs/static",
+	listen: '<<IP ADDRESS TO LISTEN>>',
+	ports: [{port:8080,ssl:false},{port:8081,ssl:true}],
+	static_files: "/path_to/static",
 	ssl_info: {
 		ssl_enabled: false,
-		private_key: "/etc/ssl/otavioeng/privatekey.pem",
-		certificate: "/etc/ssl/otavioeng/certificate.pem"
+		private_key: "/path_to/privatekey.pem",
+		certificate: "/path_to/certificate.pem"
 	},
 	backend: {
 		"console":{
@@ -18,7 +18,7 @@ exports.options = {
 		},
 		"logfile":{
 			enabled: true,
-			filename: "/sites/remotejs/logs/remotejs.log",
+			filename: "/path_to/remotejs.log",
 			field_separator: "\t"
 		}
 		}
