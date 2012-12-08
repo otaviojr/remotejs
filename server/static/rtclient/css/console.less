@@ -1,0 +1,33 @@
+@width: `$(window).width() + "px"`;
+@height: `$(window).height() + "px"`;
+
+.left { float: left; }
+
+.header .type,
+.message .type { width: (@width*5)/100; }
+
+.header .appid,
+.message .appid { width: (@width*10)/100; }
+
+.header .date,
+.message .date { width: (@width*10)/100; }
+
+.header .remote-address,
+.message .remote-address { width: (@width*10)/100; }
+
+.header .message,
+.message .message { width: (@width*40)/100; }
+
+.header .referer,
+.message .referer { width: (@width*15)/100; }
+
+.header .screenshot,
+.message .screenshot { width: (@width*5)/100; text-align: center;}
+.message .screenshot img { width: 16px; height: 16px; border: 0px;}
+
+.screenshot-window img {width: (@width/2);}
+
+.header { overflow: hidden; background-color: #000000; color: #09b14d; padding: 10px; border-bottom: 1px solid #09b14d; }
+
+ul.messages { overflow: hidden; clear: both; padding: 0px; list-style: none; height: (@height - 150); background-color: #000000; margin: 0px; }
+li.message { overflow: hidden; clear: both; padding: 0px; list-style: none; color: #09b14d; padding: 0 10px; height: 16px; }

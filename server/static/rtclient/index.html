@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>RemoteJS Realtime Console</title>
+		
+		<link rel="stylesheet/less" type="text/css" href="css/console.less" />
+		<link rel="stylesheet/less" type="text/css" href="css/reveal.css" />
+		<link rel="stylesheet/less" type="text/css" href="css/scroll.css" />
+		
+		<script src="js/jquery.min.js" type="text/javascript"></script>
+		<script src="js/jquery.reveal.js" type="text/javascript"></script>
+		<script src="js/jquery.scroll.js" type="text/javascript"></script>
+		<script src="js/less.min.js" type="text/javascript"></script>
+		<script src="js/mustache.js" type="text/javascript"></script>
+		
+		<script type="x-tmpl-mustache" id="log_line">
+			<li class="message">
+				<div class="left type">{{type}}</div>
+				<div class="left appid">{{app_id}}</div>
+				<div class="left date">{{date}}</div>
+				<div class="left remote-address">{{remoteAddress}}</div>
+				{{#error.message}}
+				<div class="left message">{{error.message}}</div>
+				{{/error.message}}
+				<div class="left referer">{{referer.href}}</div>
+				{{#screenshot}}
+				<div class="left screenshot"><a href="#" id="screenshot"><img src="images/screenshot.png"/></a></div>
+				<div id="screenshot" class="screenshot-window reveal-modal"><img src="{{screenshot}}"/></div>
+				{{/screenshot}}
+			</li>
+		</script>
+		
+		<script>
+			$(document).ready(function(){
+			
+				var protocol = "ws://";
+				if(document.location.protocol.indexOf("https") >= 0){
+					protocol = "wss://";
+				}
+				console.info(document.location);
+				this.socket = new WebSocket(protocol+document.location.hostname+":"+document.location.port,'log-listener-protocol');
+				this.socket.onopen = function(){
+				};
+	
+				this.socket.onerror = function(){
+					alert("Erro ao conectar");
+				}
+	
+				this.socket.onmessage = function(evt){
+					var received_msg = evt.data;
+					var received_obj = JSON.parse(received_msg);
+					var item = $(Mustache.render($("#log_line").html(),received_obj));
+					
+					var link = item.find("a#screenshot");
+					link.data("screenshot",item.find('div#screenshot'));
+					link.click(function(e){
+						e.preventDefault();
+						var window = $(this).data("screenshot");
+	  					window.reveal();
+					});
+					
+					$(".messages").prepend(item);
+					
+					console.info(received_msg);
+				};
+	
+				this.socket.onclose = function(){
+					alert("Conexão perdida");
+				};    
+				
+				$(window).on("resize",function(){
+					less.refresh(true);
+				});
+				
+				$(".scroll").scroll({clickstep: 50, trackwidth: 10});
+			});
+		</script>
+	</head>
+	<body>
+		<h1>RemoteJS Realtime Console</h1>
+		<div class="terminal">
+			<div class="header">
+				<div class="left type">Type</div>
+				<div class="left appid">App ID</div>
+				<div class="left date">Date</div>
+				<div class="left remote-address">Remote Address</div>
+				<div class="left message">Message</div>
+				<div class="left referer">Referer</div>
+				<div class="left screenshot">Screenshot</div>
+			</div>
+			<ul class="messages scroll">
+			</ul>
+		</div>
+	</body>
+</html>

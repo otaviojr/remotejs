@@ -69,6 +69,10 @@ var wsservers = [];
 
 var http_handle = function(request, response) {
 	console.log((new Date()) + ' Received request for ' + request.url);
+	var remoteAddress = request.remoteAddress || request.connection.remoteAddress;
+	if(request.headers["x-forwarded-for"]){
+		remoteAddress = request.headers["x-forwarded-for"].split(", ")[0];
+	}
 	
 	var uri = url.parse(request.url).pathname, filename = path.join(config.options.static_files, uri);
 	
@@ -99,7 +103,6 @@ var http_handle = function(request, response) {
 			});
 
 			request.on('end', function() {
-				var remoteAddress = request.remoteAddress;
 				proccess_error(responseString,request.origin,remoteAddress);
 				var headers = {
 					"Access-Control-Allow-Origin": 	"*",
@@ -120,7 +123,13 @@ var http_handle = function(request, response) {
 				return;
 			}
 	
-			if (fs.statSync(filename).isDirectory()) filename += '/index.html';
+			if (fs.statSync(filename).isDirectory()){
+				response.writeHead(302, {
+  					'Location': uri+'/index.html'
+				});
+				response.end();
+				return;
+			}
 	
 			fs.readFile(filename, "binary", function(err, file) {
 				if(err) {        
@@ -169,7 +178,7 @@ for(var i = 0; i < config.options.ports.length; i++){
 		}
 	
 		console.log((new Date()) + ' Connection accepted.');
-		var remoteAddress = request.remoteAddress;
+		var remoteAddress = request.remoteAddress || request.socket.remoteAddress;
 		
 		if(request.requestedProtocols == 'log-protocol'){
 			var connection = request.accept('log-protocol', request.origin);
